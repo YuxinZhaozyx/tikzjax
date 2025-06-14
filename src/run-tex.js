@@ -39,6 +39,7 @@ expose({
         // Set up the tex input file.
         const texPackages = dataset.texPackages ? JSON.parse(dataset.texPackages) : {};
 
+        input = input.split('\n').filter(line => line.trim()).join('\n'); // remove empty line
         input =
             Object.entries(texPackages).reduce((usePackageString, thisPackage) => {
                 usePackageString +=
@@ -47,7 +48,7 @@ expose({
             }, '') +
             (dataset.tikzLibraries ? `\\usetikzlibrary{${dataset.tikzLibraries}}` : '') +
             (dataset.addToPreamble || '') +
-            `\\begin{document}\n${input}\n\\end{document}\n`;
+            (input.match(/(\\begin\s*\{\s*document\s*\})/i) ? input : `\\begin{document}\n${input}\n\\end{document}\n`);
 
         if (dataset.showConsole) library.setShowConsole();
 

@@ -90,6 +90,7 @@ const processTikzScripts = async (scripts) => {
                 const loadFinishedEvent = new Event('tikzjax-load-finished', { bubbles: true });
                 svg.dispatchEvent(loadFinishedEvent);
 
+                document.dispatchEvent(new CustomEvent('tikzjax-render-finished', { detail: { status: 'success', message: '' } }));
                 return;
             }
 
@@ -99,7 +100,10 @@ const processTikzScripts = async (scripts) => {
             } catch (err) {
                 console.log(err);
                 // Show the browser's image not found icon.
-                loader.outerHTML = '<img src="//invalid.site/img-not-found.png">';
+                // loader.outerHTML = '<img src="//invalid.site/img-not-found.png">';
+                loader.outerHTML = '<svg t="1749826398409" class="icon" viewBox="0 0 1066 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4919" width="32" height="32"><path d="M989.862 927.004c-135.295-90.218-294.921-138.292-458.239-138.02-164.051 0-321.064 47.76-454.396 135.705-24.022 16.8-29.686 49.632-12.651 73.333 16.34 22.715 47.797 28.928 71.744 14.187 116.97-77.157 254.579-118.262 395.304-118.027 144.213 0 281.6 42.08 398.505 119.926 23.925 16.96 57.248 11.562 74.432-12.027 17.184-23.584 11.733-56.459-12.203-73.413a60.064 60.064 0 0 0-2.496-1.664m-83.2-611.41c88.363 0 160-70.65 160-157.797S995.025 0 906.662 0c-88.361 0-160 70.65-160 157.797s71.639 157.796 160 157.796m-746.662 0c88.361 0 160-70.65 160-157.796S248.36 0 160 0C71.637 0 0 70.65 0 157.797s71.637 157.796 160 157.796" fill="#AAAAAA" p-id="4920"></path></svg>';
+
+                document.dispatchEvent(new CustomEvent('tikzjax-render-finished', { detail: { status: 'error', message: err.toString() } }));
                 return;
             }
 
@@ -137,6 +141,8 @@ const processTikzScripts = async (scripts) => {
             // Emit a bubbling event that the svg image generation is complete.
             const loadFinishedEvent = new Event('tikzjax-load-finished', { bubbles: true });
             svg.dispatchEvent(loadFinishedEvent);
+
+            document.dispatchEvent(new CustomEvent('tikzjax-render-finished', { detail: { status: 'success', message: '' } }));
         };
 
         (async () => {
