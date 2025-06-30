@@ -119,8 +119,17 @@ const processTikzScripts = async (scripts) => {
                 }
             }
 
+            html = '<div>' + html + '</div>';
+
             const svg = document.createRange().createContextualFragment(html).firstChild;
             svg.role = 'img';
+
+            svg.style = 'position: relative;' +
+                        `width: ${svg.firstChild.width.baseVal.valueAsString};` +
+                        `height: ${svg.firstChild.height.baseVal.valueAsString};`;
+            for (const child of svg.children) {
+                child.style = 'position: absolute; top: 0; left: 0;';
+            }
 
             if (elt.dataset.ariaLabel) {
                 const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
