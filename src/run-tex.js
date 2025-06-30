@@ -41,6 +41,7 @@ expose({
 
         input = input.split('\n').filter(line => line.trim()).join('\n'); // remove empty line
         input =
+            '\\tikzset{every matrix/.append style={nodes in empty cells}}' +
             Object.entries(texPackages).reduce((usePackageString, thisPackage) => {
                 usePackageString +=
                     '\\usepackage' + (thisPackage[1] ? `[${thisPackage[1]}]` : '') + `{${thisPackage[0]}}`;
