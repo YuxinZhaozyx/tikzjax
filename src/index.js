@@ -45,6 +45,8 @@ const processTikzScripts = async (scripts) => {
                 // Emit a bubbling event that the svg is ready.
                 const loadFinishedEvent = new Event('tikzjax-load-finished', { bubbles: true });
                 svg.dispatchEvent(loadFinishedEvent);
+
+                document.dispatchEvent(new CustomEvent('tikzjax-render-finished', { detail: { status: 'success', message: '' } }));
             } else {
                 texQueue.push(elt);
 
