@@ -70,8 +70,17 @@ expose({
         // Execute the tex web assembly.
         await library.executeAsync(wasm.instance.exports);
 
-        // Extract the generated dvi file.
-        const dvi = library.readFileSync('input.dvi').buffer;
+        // Extract the generated log file.
+        let log = library.readFileSync('input.log').buffer;
+        log = new TextDecoder('utf-8').decode(log);
+
+        let dvi = null;
+        try {
+            // Extract the generated dvi file.
+            dvi = library.readFileSync('input.dvi').buffer;
+        } catch (err) { // eslint-disable-line no-unused-vars
+            throw new Error("fail to generate dvi, log:\n" + log);
+        }
 
         // Clean up the library for the next run.
         library.deleteEverything();
