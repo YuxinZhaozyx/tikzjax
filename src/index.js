@@ -126,9 +126,9 @@ const processTikzScripts = async (scripts) => {
             const svg = document.createRange().createContextualFragment(html).firstChild;
             svg.role = 'img';
 
-            svg.style = 'position: relative;' +
-                        `width: ${svg.firstChild.width.baseVal.valueAsString};` +
-                        `height: ${svg.firstChild.height.baseVal.valueAsString};`;
+            svg.style.position = 'relative';
+            svg.style.width = `${svg.scrollWidth}px`;
+            svg.style.height = `${svg.scrollHeight}px`;
             for (const child of svg.children) {
                 child.style = 'position: absolute; top: 0; left: 0;';
             }

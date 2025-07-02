@@ -79,6 +79,8 @@ expose({
             // Extract the generated dvi file.
             dvi = library.readFileSync('input.dvi').buffer;
         } catch (err) { // eslint-disable-line no-unused-vars
+            // Clean up the library for the next run.
+            library.deleteEverything();
             throw new Error("fail to generate dvi, log:\n" + log);
         }
 
