@@ -98,6 +98,7 @@ const processTikzScripts = async (scripts) => {
 
             let html = '';
             try {
+                texWorker = await initializeWorker();
                 html = await texWorker.texify(text, Object.assign({}, elt.dataset));
             } catch (err) {
                 console.log(err);
@@ -107,6 +108,9 @@ const processTikzScripts = async (scripts) => {
 
                 document.dispatchEvent(new CustomEvent('tikzjax-render-finished', { detail: { status: 'error', message: err.toString() } }));
                 return;
+            } finally {
+                await Thread.terminate(await texWorker);
+                texWorker = null;
             }
 
             const ids = html.match(/\bid="pgf[^"]*"/g);
@@ -167,7 +171,7 @@ const processTikzScripts = async (scripts) => {
             // End here if there is nothing to run tex on.
             if (!texQueue.length) return resolve();
 
-            texWorker = await texWorker;
+            // texWorker = await texWorker;
 
             processQueue.push(currentProcessPromise);
             if (processQueue.length > 1) await processQueue[processQueue.length - 2];
@@ -235,13 +239,13 @@ const initialize = async () => {
 
 const shutdown = async () => {
     if (observer) observer.disconnect();
-    await Thread.terminate(await texWorker);
+    if (texWorker) await Thread.terminate(await texWorker);
 };
 
 if (!window.TikzJax) {
     window.TikzJax = true;
 
-    texWorker = initializeWorker();
+    // texWorker = initializeWorker();
 
     if (document.readyState == 'complete') initialize();
     else window.addEventListener('load', initialize);
