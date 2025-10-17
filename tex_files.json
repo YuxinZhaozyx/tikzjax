@@ -11,6 +11,7 @@
     "expl3.sty",
     "hf-tikz.sty",
     "ifthen.sty",
+    "newunicodechar.sty",
     "l3backend-dvips.def",
     "pgfcalendar.code.tex",
     "pgfcalendar.sty",

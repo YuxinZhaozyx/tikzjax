@@ -29,6 +29,66 @@ const loadDecompress = async (file) => {
     }
 };
 
+function getUnicode(char) {
+    const code = char.codePointAt(0);
+    return 'U+' + code.toString(16).toUpperCase().padStart(4, '0');
+}
+
+function fromUnicode(code) {
+    // support：U+4E2D, U+1F600, 4E2D, 0x4E2D
+    const match = code.match(/(?:U\+|0x)?([0-9A-Fa-f]+)/);
+    if (!match) {
+        throw new Error('Invalid Unicode code point: ' + code);
+    }
+    const hex = match[1];
+    const codePoint = parseInt(hex, 16);
+    return String.fromCodePoint(codePoint);
+}
+
+function findNotSupportedChars(str) {
+    const result = [];
+    for (let char of str) {
+        const code = char.codePointAt(0);
+        if (code > 255) {
+            result.push(char);
+        }
+    }
+    return result;
+}
+
+function replaceNotSupportedCharMarkers(str) {
+    // match PUA [U+xxxx]
+    // const regex = /&#xf05b;&#xf055;&#xf02b;(&#xf0[0-9a-f]{2};){4}&#xf05d;/gi;
+    // add (?:[^&]|&(?!(#xf[0-9a-f]{3};)))*? to adapt to broken marker
+    const anyNotPUA = `(?:[^&]|&(?!(#xf[0-9a-f]{3};)))*?`;
+    const regex = new RegExp(
+        '&#xf05b;' +     // [
+        anyNotPUA +
+        '&#xf055;' +     // U
+        anyNotPUA +
+        '&#xf02b;' +     // +
+        `(${anyNotPUA}&#xf0[0-9a-f]{2};){4}` + // 四个十六进制字符
+        anyNotPUA +
+        '&#xf05d;',      // ]
+        'gi'
+    );
+
+    return str.replace(regex, (match) => {
+        // extract four &#x...;
+        let entities = match.toLowerCase().match(/&#xf0[0-9a-f]{2};/gi) || [];
+        if (entities.length != 8) return match;
+        entities = entities.slice(3, 7);
+        let unicode = 'U+';
+        for (const entity of entities) {
+            const hexCode = entity.slice(3); // remove &#x
+            const code = parseInt(hexCode, 16);
+            unicode += String.fromCharCode(code & 0xFF).toUpperCase();
+        }
+
+        return fromUnicode(unicode);
+    });
+}
+
 expose({
     async load(_urlRoot) {
         urlRoot = _urlRoot;
@@ -40,15 +100,22 @@ expose({
         const texPackages = dataset.texPackages ? JSON.parse(dataset.texPackages) : {};
 
         input = input.split('\n').filter(line => line.trim()).join('\n'); // remove empty line
+        const unsupportChars = findNotSupportedChars(input); // find all not supported char
         input =
-            '\\tikzset{every matrix/.append style={nodes in empty cells}}' +
+            '\\tikzset{every matrix/.append style={nodes in empty cells}}\n' +
             Object.entries(texPackages).reduce((usePackageString, thisPackage) => {
                 usePackageString +=
-                    '\\usepackage' + (thisPackage[1] ? `[${thisPackage[1]}]` : '') + `{${thisPackage[0]}}`;
+                    '\\usepackage' + (thisPackage[1] ? `[${thisPackage[1]}]` : '') + `{${thisPackage[0]}}\n`;
                 return usePackageString;
             }, '') +
-            (dataset.tikzLibraries ? `\\usetikzlibrary{${dataset.tikzLibraries}}` : '') +
+            (dataset.tikzLibraries ? `\\usetikzlibrary{${dataset.tikzLibraries}}\n` : '') +
             (dataset.addToPreamble || '') +
+            (unsupportChars.length > 0 ? '\\usepackage{newunicodechar}\n' : '') +
+            unsupportChars.reduce((newunicodecharString, char) => {
+                newunicodecharString +=
+                    `\\newunicodechar{${char}}{\\rlap{[${getUnicode(char)}]}\\phantom{xx}}\n`;
+                return newunicodecharString;
+            }, '') +
             (input.match(/(\\begin\s*\{\s*document\s*\})/i) ? input : `\\begin{document}\n${input}\n\\end{document}\n`);
 
         if (dataset.showConsole) library.setShowConsole();
@@ -102,6 +169,8 @@ expose({
         }
 
         await dvi2html(streamBuffer(), page);
+
+        html = replaceNotSupportedCharMarkers(html);
 
         return html;
     }
