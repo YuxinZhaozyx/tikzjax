@@ -89,6 +89,110 @@ function replaceNotSupportedCharMarkers(str) {
     });
 }
 
+async function embedFonts(html) {
+    // 1. 提取所有 font-family 名称
+    const fontFamilyRegex = /font-family\s*=\s*["']?([^;"']+)["']?/gi;
+    const matches = [...html.matchAll(fontFamilyRegex)];
+    const fontFamilies = [...new Set(matches.map(m => m[1].trim()))]; // 去重
+
+    if (fontFamilies.length === 0) {
+        return html; // 没有字体，直接返回
+    }
+
+    // 2. 加载字体并转换为 base64
+    const fontFaces = [];
+
+    for (const fontFamily of fontFamilies) {
+        const filename = `${fontFamily}.woff2`;
+        const url = `${urlRoot}/fonts/${filename}`;
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const reader = response.body.getReader();
+            const chunks = [];
+            let done, value;
+            while (!done) {
+                ({ done, value } = await reader.read());
+                if (value) chunks.push(value);
+            }
+
+            // 合并所有 chunk
+            const uint8Array = new Uint8Array(chunks.reduce((acc, chunk) => {
+                const newAcc = new Uint8Array(acc.length + chunk.length);
+                newAcc.set(acc);
+                newAcc.set(chunk, acc.length);
+                return newAcc;
+            }, new Uint8Array()));
+
+            // 转为 base64
+            const base64 = btoa(String.fromCharCode(...uint8Array));
+            const fontFaceCSS = `@font-face` +
+                `{ font-family:"${fontFamily}"; src:url(data:font/woff2;base64,${base64}) format('woff2'); }`;
+            fontFaces.push(fontFaceCSS);
+        } catch (err) {
+            console.warn(`load font fail: ${fontFamily}`, err);
+        }
+    }
+
+    if (fontFaces.length === 0) {
+        return html; // 没有成功加载任何字体
+    }
+
+    // 3. 构造 style 标签
+    const styleTag = `<style>${fontFaces.join('\n')}</style>\n`;
+
+    // 4. 在 <svg> 开始标签后插入 <style>
+    // 匹配 <svg ...> 或 <svg>，并保留所有属性
+    const svgOpenTagMatch = html.match(/<svg[^>]*>/);
+    if (!svgOpenTagMatch) {
+        // HTML 中未找到 <svg> 标签
+        return html;
+    }
+
+    const svgOpenTag = svgOpenTagMatch[0];
+    const insertIndex = svgOpenTagMatch.index + svgOpenTag.length;
+
+    // 插入 style，并确保只插入一次
+    const result = html.slice(0, insertIndex) + styleTag + html.slice(insertIndex);
+
+    return result;
+}
+
+function composeToSVG(html) {
+    // 匹配所有 <svg> 开始标签和内容
+    const svgRegex = /<svg\b[^>]*>(.*?)<\/svg>/gs;
+    const matches = [];
+    let match;
+
+    // 提取所有 <svg> 的内容
+    while ((match = svgRegex.exec(html)) !== null) {
+        matches.push(match);
+    }
+
+    if (matches.length === 0) return '';
+
+    // 第一个 match[0] 是完整标签，match[1] 是内容
+    const firstMatch = matches[0];
+    const firstTag = firstMatch[0]; // 完整的首个 <svg...> 标签
+    const contentParts = matches.map(m => m[1]); // 所有内容部分
+
+    // 合并内容
+    const mergedContent = contentParts.join('');
+
+    // 从第一个标签中提取开标签部分（不含内容）
+    // 我们要保留第一个 <svg ...> 的开标签结构
+    const openTagMatch = firstTag.match(/<svg\b[^>]*>/i);
+    if (!openTagMatch) return '';
+
+    const openTag = openTagMatch[0];
+    const closingTag = '</svg>';
+
+    // 拼接最终结果
+    return `${openTag}${mergedContent}${closingTag}`;
+}
+
 expose({
     async load(_urlRoot) {
         urlRoot = _urlRoot;
@@ -98,8 +202,7 @@ expose({
     async texify(input, dataset) {
         // Set up the tex input file.
         const texPackages = dataset.texPackages ? JSON.parse(dataset.texPackages) : {};
-
-        input = input.split('\n').filter(line => line.trim()).join('\n'); // remove empty line
+        input = input.split('\n').filter(line => line.trim() && !line.includes("\\documentclass")).join('\n'); // remove empty line and documentclass
         const unsupportChars = findNotSupportedChars(input); // find all not supported char
         input =
             '\\tikzset{every matrix/.append style={nodes in empty cells}}\n' +
@@ -171,6 +274,8 @@ expose({
         await dvi2html(streamBuffer(), page);
 
         html = replaceNotSupportedCharMarkers(html);
+        html = composeToSVG(html);
+        if (dataset.embedFonts) html = embedFonts(html);
 
         return html;
     }

@@ -96,6 +96,7 @@
     "pgfplotsutil.verb.code.tex",
     "pgfsys-luatex.def",
     "pgfsysanimations.code.tex",
+    "circuitikz.sty",
     "chemfig.sty",
     "chemfig-lewis.tex",
     "chemfig.tex",
