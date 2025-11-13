@@ -60,7 +60,7 @@ function replaceNotSupportedCharMarkers(str) {
     // match PUA [U+xxxx]
     // const regex = /&#xf05b;&#xf055;&#xf02b;(&#xf0[0-9a-f]{2};){4}&#xf05d;/gi;
     // add (?:[^&]|&(?!(#xf[0-9a-f]{3};)))*? to adapt to broken marker
-    const anyNotPUA = `(?:[^&]|&(?!(#xf[0-9a-f]{3};)))*?`;
+    const anyNotPUA = '(?:[^&]|&(?!(#xf[0-9a-f]{3};)))*?';
     const regex = new RegExp(
         '&#xf05b;' +     // [
         anyNotPUA +
@@ -128,7 +128,7 @@ async function embedFonts(html) {
 
             // 转为 base64
             const base64 = btoa(String.fromCharCode(...uint8Array));
-            const fontFaceCSS = `@font-face` +
+            const fontFaceCSS = '@font-face' +
                 `{ font-family:"${fontFamily}"; src:url(data:font/woff2;base64,${base64}) format('woff2'); }`;
             fontFaces.push(fontFaceCSS);
         } catch (err) {
@@ -202,10 +202,22 @@ expose({
     async texify(input, dataset) {
         // Set up the tex input file.
         const texPackages = dataset.texPackages ? JSON.parse(dataset.texPackages) : {};
-        input = input.split('\n').filter(line => line.trim() && !line.includes("\\documentclass")).join('\n'); // remove empty line and documentclass
+        input = input.split('\n').filter(line => line.trim() && !line.includes('\\documentclass')).join('\n'); // remove empty line and documentclass
         const unsupportChars = findNotSupportedChars(input); // find all not supported char
-        input =
-            '\\tikzset{every matrix/.append style={nodes in empty cells}}\n' +
+
+        const match = input.match(/\\begin\s*\{\s*document\s*\}/i);
+        let head = '';
+        let body = '';
+        if (match) {
+            const index = match.index;
+            head = input.substring(0, index);
+            body = input.substring(index);
+        } else {
+            head = '';
+            body = `\\begin{document}\n${input}\n\\end{document}\n`;
+        }
+
+        head =
             Object.entries(texPackages).reduce((usePackageString, thisPackage) => {
                 usePackageString +=
                     '\\usepackage' + (thisPackage[1] ? `[${thisPackage[1]}]` : '') + `{${thisPackage[0]}}\n`;
@@ -219,7 +231,13 @@ expose({
                     `\\newunicodechar{${char}}{\\rlap{[${getUnicode(char)}]}\\phantom{xx}}\n`;
                 return newunicodecharString;
             }, '') +
-            (input.match(/(\\begin\s*\{\s*document\s*\})/i) ? input : `\\begin{document}\n${input}\n\\end{document}\n`);
+            head;
+
+        if (head.match(/^(?:[^%\n]|\\%)*?\\usepackage(?:\[[^\]]*\])?\s*\{\s*tikz-cd\s*\}/im)) {
+            head += '\\tikzcdset{nodes in empty cells}\n';
+        }
+
+        input = head + body;
 
         if (dataset.showConsole) library.setShowConsole();
 
@@ -251,7 +269,7 @@ expose({
         } catch (err) { // eslint-disable-line no-unused-vars
             // Clean up the library for the next run.
             library.deleteEverything();
-            throw new Error("fail to generate dvi, log:\n" + log);
+            throw new Error('fail to generate dvi, log:\n' + log);
         }
 
         // Clean up the library for the next run.
