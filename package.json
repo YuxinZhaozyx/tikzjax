@@ -28,7 +28,7 @@
         "serve": "webpack serve --mode development"
     },
     "dependencies": {
-        "@drgrice1/dvi2html": "^0.0.7-beta4",
+        "@yuxinzhao/dvi2html": "^0.0.7-beta5",
         "buffer": "^6.0.3",
         "idb": "^8.0.1",
         "pako": "^2.1.0",
