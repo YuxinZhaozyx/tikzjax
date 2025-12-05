@@ -233,7 +233,7 @@ expose({
             }, '') +
             head;
 
-        if (head.match(/^(?:[^%\n]|\\%)*?\\usepackage(?:\[[^\]]*\])?\s*\{\s*tikz-cd\s*\}/im)) {
+        if (head.match(/^(?:[^%\n]|\\%)*?\\usepackage(?:\[[^\]]*\])?\s*\{\s*(?:tikz-cd|quiver)\s*\}/im)) {
             head += '\\tikzcdset{nodes in empty cells}\n';
         }
 

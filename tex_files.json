@@ -245,6 +245,7 @@
     "tkz-tools-eu-lua-intersections.tex",
     "tkz-tools-eu-math.tex",
     "tkz-draw-eu-circles.tex",
+    "quiver.sty",
     "umsa.fd",
     "umsb.fd",
     "ueuex.fd",
